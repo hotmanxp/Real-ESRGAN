@@ -12,7 +12,7 @@ from basicsr.utils.download_util import load_file_from_url
 from os import path as osp
 from tqdm import tqdm
 
-from realesrgan import RealESRGANer
+from realesrgan import RealESRGANer, get_device
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 
 try:
@@ -22,6 +22,7 @@ except ImportError:
     pip.main(['install', '--user', 'ffmpeg-python'])
     import ffmpeg
 
+torch.device("mps")
 
 def get_video_meta_info(video_path):
     ret = {}
@@ -170,7 +171,7 @@ class Writer:
         self.stream_writer.wait()
 
 
-def inference_video(args, video_save_path, device=None, total_workers=1, worker_idx=0):
+def inference_video(args, video_save_path, device=None, total_workers=1, worker_idx=9):
     # ---------------------- determine models according to model names ---------------------- #
     args.model_name = args.model_name.split('.pth')[0]
     if args.model_name == 'RealESRGAN_x4plus':  # x4 RRDBNet model
@@ -228,6 +229,7 @@ def inference_video(args, video_save_path, device=None, total_workers=1, worker_
         pre_pad=args.pre_pad,
         half=not args.fp32,
         device=device,
+        gpu_id=None if worker_idx == 9 else worker_idx + 1
     )
 
     if 'anime' in args.model_name and args.face_enhance:
@@ -269,7 +271,7 @@ def inference_video(args, video_save_path, device=None, total_workers=1, worker_
         else:
             writer.write_frame(output)
 
-        torch.cuda.synchronize(device)
+        # torch.mps.synchronize('mps')
         pbar.update(1)
 
     reader.close()
@@ -286,7 +288,8 @@ def run(args):
         os.system(f'ffmpeg -i {args.input} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0  {tmp_frames_folder}/frame%08d.png')
         args.input = tmp_frames_folder
 
-    num_gpus = torch.cuda.device_count()
+    # num_gpus = torch.cuda.device_count()
+    num_gpus = 1
     num_process = num_gpus * args.num_process_per_gpu
     if num_process == 1:
         inference_video(args, video_save_path)

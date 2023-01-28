@@ -5,10 +5,28 @@ import os
 import queue
 import threading
 import torch
+
+
 from basicsr.utils.download_util import load_file_from_url
 from torch.nn import functional as F
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+IS_HIGH_VERSION = True
+
+
+def get_device(gpu_id=None):
+    if gpu_id is None:
+        gpu_str = ''
+    elif isinstance(gpu_id, int):
+        gpu_str = f':{gpu_id}'
+    else:
+        raise TypeError('Input should be int value.')
+
+    if IS_HIGH_VERSION:
+        if torch.backends.mps.is_available():
+            return torch.device('mps' + gpu_str)
+    return torch.device('cuda' + gpu_str if torch.cuda.is_available() and torch.backends.cudnn.is_available() else 'cpu')
 
 
 class RealESRGANer():
@@ -45,11 +63,8 @@ class RealESRGANer():
         self.half = half
 
         # initialize model
-        if gpu_id:
-            self.device = torch.device(
-                f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu') if device is None else device
-        else:
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if device is None else device
+        self.device = get_device(gpu_id)
+        print(f'====》{self.device}')
 
         if isinstance(model_path, list):
             # dni
