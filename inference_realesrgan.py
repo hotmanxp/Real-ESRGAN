@@ -7,6 +7,7 @@ from basicsr.utils.download_util import load_file_from_url
 
 from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
+from realesrgan.heic_helper import gen_png_from_heic, clean_by_folder, remove_inferred_source
 import time
 
 
@@ -14,12 +15,13 @@ def main():
     """Inference demo for Real-ESRGAN.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', type=str, default='inputs', help='Input image or folder')
+    parser.add_argument('-i', '--input', type=str,
+                        default='/Users/ethan/Downloads/improve', help='Input image or folder')
     parser.add_argument(
         '-n',
         '--model_name',
         type=str,
-        default='RealESRGAN_x4plus',
+        default='RealESRGAN_x2plus',
         help=('Model names: RealESRGAN_x4plus | RealESRNet_x4plus | RealESRGAN_x4plus_anime_6B | RealESRGAN_x2plus | '
               'realesr-animevideov3 | realesr-general-x4v3'))
     parser.add_argument('-o', '--output', type=str, default='results', help='Output folder')
@@ -33,13 +35,14 @@ def main():
     parser.add_argument('-s', '--outscale', type=float, default=2, help='The final upsampling scale of the image')
     parser.add_argument(
         '--model_path', type=str, default=None, help='[Option] Model path. Usually, you do not need to specify it')
-    parser.add_argument('--suffix', type=str, default='out', help='Suffix of the restored image')
-    parser.add_argument('-t', '--tile', type=int, default=300, help='Tile size, 0 for no tile during testing')
+    parser.add_argument('--suffix', type=str, default='', help='Suffix of the restored image')
+    parser.add_argument('-t', '--tile', type=int, default=320, help='Tile size, 0 for no tile during testing')
     parser.add_argument('--tile_pad', type=int, default=10, help='Tile padding')
     parser.add_argument('--pre_pad', type=int, default=0, help='Pre padding size at each border')
     parser.add_argument('--face_enhance', action='store_true', help='Use GFPGAN to enhance face')
     parser.add_argument(
-        '--fp32', default='fp32', help='Use fp32 precision during inference. Default: fp16 (half precision).')
+        '--fp32', default='fp32',
+        help='Use fp32 precision during inference. Default: fp16 (half precision).')
     parser.add_argument(
         '--alpha_upsampler',
         type=str,
@@ -52,6 +55,9 @@ def main():
         help='Image extension. Options: auto | jpg | png, auto means using the same extension as inputs')
     parser.add_argument(
         '-g', '--gpu-id', type=int, default=None, help='gpu device to use (default=None) can be 0,1,2 for multi-gpu')
+    parser.add_argument(
+        '--force', default=None,
+        help='If force transform')
 
     args = parser.parse_args()
 
@@ -126,6 +132,7 @@ def main():
             bg_upsampler=upsampler)
     if os.path.isdir(args.input):
         args.output = f'{args.input}_resultR'
+        gen_png_from_heic(args.input)
     else:
         args.output = f'{args.input[:-4]}_resultR'
     os.makedirs(args.output, exist_ok=True)
@@ -133,11 +140,12 @@ def main():
     if os.path.isfile(args.input):
         paths = [args.input]
     else:
-        paths = sorted(glob.glob(os.path.join(args.input, '*.[jJpP][pPnN][gG]')))
+        paths = sorted(glob.glob(os.path.join(args.input, '*.[jJpP][pPnN]*[gG]')))
+        paths = remove_inferred_source(paths, args.output) if not args.force else paths
 
     for idx, path in enumerate(paths):
         imgname, extension = os.path.splitext(os.path.basename(path))
-        print('Testing', idx, imgname)
+        print('Transform:', idx, imgname)
 
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
         if len(img.shape) == 3 and img.shape[2] == 4:
@@ -166,6 +174,7 @@ def main():
                 save_path = os.path.join(args.output, f'{imgname}_{args.suffix}.{extension}')
             cv2.imwrite(save_path, output)
     print(f'Result is save at: {args.output}')
+    clean_by_folder(args.input_path)
 
 
 if __name__ == '__main__':
