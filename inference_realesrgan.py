@@ -7,7 +7,7 @@ from basicsr.utils.download_util import load_file_from_url
 
 from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
-from realesrgan.heic_helper import gen_png_from_heic, clean_by_folder, remove_inferred_source
+from realesrgan.heic_helper import get_img_to_trans, clean_by_folder, recover_exif
 import time
 
 
@@ -132,7 +132,6 @@ def main():
             bg_upsampler=upsampler)
     if os.path.isdir(args.input):
         args.output = f'{args.input}_resultR'
-        gen_png_from_heic(args.input)
     else:
         args.output = f'{args.input[:-4]}_resultR'
     os.makedirs(args.output, exist_ok=True)
@@ -140,8 +139,7 @@ def main():
     if os.path.isfile(args.input):
         paths = [args.input]
     else:
-        paths = sorted(glob.glob(os.path.join(args.input, '*.[jJpP][pPnN]*[gG]')))
-        paths = remove_inferred_source(paths, args.output) if not args.force else paths
+        paths = get_img_to_trans(args.input, args.output)
 
     for idx, path in enumerate(paths):
         imgname, extension = os.path.splitext(os.path.basename(path))
@@ -174,7 +172,8 @@ def main():
                 save_path = os.path.join(args.output, f'{imgname}_{args.suffix}.{extension}')
             cv2.imwrite(save_path, output)
     print(f'Result is save at: {args.output}')
-    clean_by_folder(args.input_path)
+    recover_exif(args.output, args.input)
+    clean_by_folder(args.input)
 
 
 if __name__ == '__main__':
