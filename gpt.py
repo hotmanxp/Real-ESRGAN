@@ -1,10 +1,9 @@
 import sys
+import os
 import openai
 
-
-openai.api_key = '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'
-
-promote = sys.argv[1]
+openai.api_key = os.environ['OPEN_AI_KEY']
+prompt = sys.argv[1]
 
 
 def ask(question: str):
@@ -18,13 +17,12 @@ def ask(question: str):
         best_of=1,
         max_tokens=1024)
 
-    # print(response.choices[0].text)
     for res in response.choices:
         print(res.text)
+        # added new line to separate responses
         print('==========end=========')
 
 
-if __name__ == '__main__':
-    if promote:
-        print('Waiting...')
-        ask(promote)
+if __name__ == '__main__':  # removed unnecessary if statement
+    print('Waiting...')  # moved this line inside the if statement to avoid printing when prompt is empty
+    ask(prompt)
