@@ -4,22 +4,15 @@ import pyheif
 import piexif
 import pillow_heif
 from PIL import Image
-import argparse
+
 
 img_tmp_ext = 'jpeg'
 
 last_trans_images = []
 
 
-def list_map(list, fn):
-    result = []
-    for item in list:
-        result.append(fn(item))
-    return result
-
-
-def get_file_by_format(dir: str, formatStr: str):
-    return list(sorted(glob.glob(os.path.join(dir, f'*.{formatStr}'))))
+def get_file_by_format(dir: str, formatStr: str) -> list:
+    return sorted(glob.glob(os.path.join(dir, f'*.{formatStr}')))
 
 
 def get_img_files(dir: str):
@@ -86,12 +79,11 @@ def clean_by_folder(input_folder: str):
 
 def remove_inferred_source(source_list: list, dist_dir: str):
     result = []
-    resulted_list = get_img_files(dist_dir)
-    resulted_list = list_map(resulted_list, lambda item: item.lower())
+    transformed_files = [file.lower() for file in get_img_files(dist_dir)]
 
     for img_src in source_list:
         img = get_file_by_path(img_src).lower()
-        if not (f'{dist_dir.lower()}/{img}' in resulted_list):
+        if f'{dist_dir.lower()}/{img}' not in transformed_files:
             result.append(img_src)
         else:
             print(f'File: {img_src}, already transformed!')
@@ -105,20 +97,16 @@ def copy_exif(img_path: str, target_img_path: str):
 
     target_img = Image.open(target_img_path)
 
-    try:
-        if target_img.info['exif']:
-            print(target_img.info['exif'])
-            print(f'File: {target_img_path} already have exif info, skipped')
-            return
-    except Exception:
-        print('Copy exif info')
-    if img_path.lower().endswith('.heic'):
-        img_info = pillow_heif.read_heif(img_path)
-    else:
-        img_info = Image.open(img_path)
+    # Check if target image already has exif info and skip if it does
+    if 'exif' in target_img.info:
+        print(f'File: {target_img_path} already have exif info, skipped')
+        return
 
-    exif_info = piexif.load(img_info.info['exif'])
-    target_img.save(target_img_path, exif=piexif.dump(exif_info))
+    # Load the image info depending on the file type
+    img = pillow_heif.read_heif(img_path) if img_path.lower().endswith('.heic') else Image.open(img_path)
+
+    exif = piexif.load(img.info['exif'])
+    target_img.save(target_img_path, exif=piexif.dump(exif))
     print(f'Sucessfully recover exif info: {target_img_path}')
 
 
@@ -138,18 +126,6 @@ def recover_exif(dist_dir: str, source_dir: str):
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-i', '--input_path', type=str, help='Input image, video or folder. Default: inputs/whole_imgs')
-    # parser.add_argument('-c', '--clear', type=str, help='if clear')
-
-    # args = parser.parse_args()
-    # if (args.clear is None):
-    #     get_img_to_trans(args.input_path)
-    # else:
-    #     clean_by_folder(args.input_path)
     testImg = '/Users/ethan/Downloads/improve'
     testTargetImg = '/Users/ethan/Downloads/improve_resultR'
     recover_exif(testTargetImg, testImg)
-    # testImg = '/Users/ethan/Downloads/improve/IMG_6348.heic'
-    # testTargetImg = '/Users/ethan/Downloads/improve_resultR/IMG_6348.jpeg'
-    # copy_exif(testImg, testTargetImg)
