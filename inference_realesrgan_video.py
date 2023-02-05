@@ -12,7 +12,7 @@ from basicsr.utils.download_util import load_file_from_url
 from os import path as osp
 from tqdm import tqdm
 
-from realesrgan import RealESRGANer, get_device
+from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 
 try:
@@ -23,6 +23,7 @@ except ImportError:
     import ffmpeg
 
 torch.device("mps")
+
 
 def get_video_meta_info(video_path):
     ret = {}
@@ -229,8 +230,7 @@ def inference_video(args, video_save_path, device=None, total_workers=1, worker_
         pre_pad=args.pre_pad,
         half=not args.fp32,
         device=device,
-        gpu_id=None if worker_idx == 9 else worker_idx + 1
-    )
+        gpu_id=None if worker_idx == 9 else worker_idx + 1)
 
     if 'anime' in args.model_name and args.face_enhance:
         print('face_enhance is not supported in anime models, we turned this option off for you. '
@@ -356,7 +356,9 @@ def main():
     parser.add_argument('--pre_pad', type=int, default=0, help='Pre padding size at each border')
     parser.add_argument('--face_enhance', action='store_true', help='Use GFPGAN to enhance face')
     parser.add_argument(
-        '--fp32', action='store_true', default='fp32',
+        '--fp32',
+        action='store_true',
+        default='fp32',
         help='Use fp32 precision during inference. Default: fp16 (half precision).')
     parser.add_argument('--fps', type=float, default=None, help='FPS of the output video')
     parser.add_argument('--ffmpeg_bin', type=str, default='ffmpeg', help='The path to ffmpeg')
